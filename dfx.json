@@ -1,0 +1,24 @@
+{
+    "canisters": {
+        "Test": {
+            "main": "./Test.mo",
+            "type": "motoko"
+          }
+    },
+    "defaults": {
+      "build": {
+        "packtool": "vessel sources"
+      }
+    },
+    "networks": {
+      "ic": {
+        "providers": ["https://ic0.app"],
+        "type": "persistent"
+      },
+      "local": {
+        "bind": "0.0.0.0:8000",
+        "type": "ephemeral"
+      }
+    }
+  }
+  
