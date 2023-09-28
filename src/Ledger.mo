@@ -83,5 +83,17 @@ module{
 
         // Returns the amount of ICP on the specified account.
         account_balance : shared query (AccountBalanceArgs) -> async (ICP);
+
+        // Returns the current transfer_fee.
+        transfer_fee : shared query ({}) -> async ({transfer_fee: ICP; });
+
+        // Returns token symbol.
+        symbol : shared query () -> async ({ symbol: Text });
+
+        // Returns token name.
+        name : shared query () -> async ({ name: Text });
+
+        // Returns token decimals.
+        decimals : shared query () -> async ({ decimals: Nat32 });
     };
 }

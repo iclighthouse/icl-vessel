@@ -82,9 +82,6 @@ module {
       message : Text;
     };
   };
-  public type Config = { //ict
-        feeTo: ?Address;
-    };
   public type InitArgs = {
       totalSupply: Nat;
       decimals: Nat8;
@@ -146,15 +143,5 @@ module {
     drc20_getCoinSeconds : shared query ?Address -> async (CoinSeconds, ?CoinSeconds);
     drc20_dropAccount : shared (?Sa) -> async Bool;
     drc20_holdersCount : shared query () -> async (balances: Nat, nonces: Nat, droppedAccounts: Nat);
-    ictokens_maxSupply : shared query () -> async ?Nat;
-    ictokens_top100 : shared query () -> async [(Address, Amount)];
-    ictokens_heldFirstTime : shared query Address -> async ?Int;
-    ictokens_config : shared Config -> async Bool;
-    ictokens_getConfig : shared query () -> async Config;
-    ictokens_addMinter : shared (_minter: Principal) -> async Bool;
-    ictokens_snapshot : shared Amount -> async Bool;
-    ictokens_clearSnapshot : shared () -> async Bool;
-    ictokens_getSnapshot : shared query (Nat, Nat) -> async (Int, [(AccountId, Nat)], Bool);
-    ictokens_snapshotBalanceOf : shared query (Nat, Address) -> async (Int, ?Nat);
   }
 }

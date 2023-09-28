@@ -301,7 +301,7 @@ module {
         return Blob.fromArray(arrayAppend(crc, hash));   
     };
 
-    //ICRC1 Accout Encoding/Decoding
+    //ICRC1 Accout Encoding/Decoding (Please use the new module ICRC1Account)
     //Test: https://m7sm4-2iaaa-aaaab-qabra-cai.ic0.app/?tag=573678753
     public func icrc1Encode(_account: {owner: Principal; subaccount: ?Blob}): Blob{
         switch(_account.subaccount){
@@ -344,23 +344,23 @@ module {
         #AccountId: Blob;
         #Other: Blob;
     };
-    // public func accountDecode(_account: Blob): AccountType{
-    //     let accountRaw = Blob.toArray(_account);
-    //     let len = accountRaw.size();
-    //     let form = principalForm(Principal.fromBlob(_account));
-    //     if (len == 0){
-    //         return #Other(_account);
-    //     }else if (len < 30 and form != #ICRC1Account and form != #NoneId){
-    //         return #ICRC1Account({owner = Principal.fromBlob(_account); subaccount = null});
-    //     }else if (len == 32 and isValidAccount(Blob.toArray(_account))){
-    //         return #AccountId(_account);
-    //     }else if (form == #ICRC1Account){
-    //         switch(icrc1Decode(_account)){
-    //             case(?(account)){ return #ICRC1Account(account); };
-    //             case(_){ return #Other(_account); };
-    //         };
-    //     }else{
-    //         return #Other(_account);
-    //     };
-    // };
+    public func accountDecode(_account: Blob): AccountType{
+        let accountRaw = Blob.toArray(_account);
+        let len = accountRaw.size();
+        let form = principalForm(Principal.fromBlob(_account));
+        if (len == 0){
+            return #Other(_account);
+        }else if (len < 30 and form != #ICRC1Account and form != #NoneId){
+            return #ICRC1Account({owner = Principal.fromBlob(_account); subaccount = null});
+        }else if (len == 32 and isValidAccount(Blob.toArray(_account))){
+            return #AccountId(_account);
+        }else if (form == #ICRC1Account){
+            switch(icrc1Decode(_account)){
+                case(?(account)){ return #ICRC1Account(account); };
+                case(_){ return #Other(_account); };
+            };
+        }else{
+            return #Other(_account);
+        };
+    };
 };
