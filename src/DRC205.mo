@@ -493,6 +493,36 @@ module {
                 storagePool = storagePool;
             };
         };
+        public func getDataBase() : DataTempV2 {
+            let _txnRecords = Trie.filter(txnRecords, func (k: Txid, v: TxnRecord): Bool{
+                v.time + 72*3600*1000000000 > Time.now()
+            });
+            let _globalTxns = (List.filter(globalTxns.0, func (t: (Txid, Time.Time)): Bool{
+                t.1 + 72*3600*1000000000 > Time.now()
+            }), List.filter(globalTxns.1, func (t: (Txid, Time.Time)): Bool{
+                t.1 + 72*3600*1000000000 > Time.now()
+            }));
+            let _accountLastTxns = Trie.mapFilter<AccountId, Deque.Deque<Txid>, Deque.Deque<Txid>>(accountLastTxns, func (k: AccountId, v: Deque.Deque<Txid>): ?Deque.Deque<Txid>{
+                let dq = (List.filter(v.0, func (t: Txid): Bool{
+                    Trie.some(_txnRecords, func (k: Txid, v: TxnRecord): Bool{ k == t })
+                }), List.filter(v.1, func (t: Txid): Bool{
+                    Trie.some(_txnRecords, func (k: Txid, v: TxnRecord): Bool{ k == t })
+                }));
+                if (List.size(dq.0) + List.size(dq.1) > 0){
+                    return ?dq;
+                }else{
+                    return null;
+                };
+            });
+            return {
+                setting = setting;
+                txnRecords = _txnRecords;
+                globalTxns = _globalTxns;
+                globalLastTxns = globalLastTxns;
+                accountLastTxns = _accountLastTxns;
+                storagePool = storagePool;
+            };
+        };
         public func setData(_data: DataTempV2) : (){
             setting := _data.setting;
             txnRecords := _data.txnRecords;
