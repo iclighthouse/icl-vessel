@@ -217,7 +217,7 @@ module {
     public type DRC205 = actor {
         drc205_canisterId : shared query () -> async Principal;
         drc205_events : shared query (_account: ?DRC205.Address) -> async [DRC205.TxnRecord];
-        drc205_events2 : shared query (_account: ?DRC205.Address, _startTime: ?Time.Time) -> async [DRC205.TxnRecord];
+        drc205_events_filter : shared query (_account: ?DRC205.Address, _startTime: ?Time.Time, _endTime: ?Time.Time) -> async (data: [DRC205.TxnRecord], mayHaveArchived: Bool);
         drc205_txn : shared query (_txid: DRC205.Txid) -> async (txn: ?DRC205.TxnRecord);
         drc205_txn2 : shared (_txid: DRC205.Txid) -> async (txn: ?DRC205.TxnRecord);
     };
