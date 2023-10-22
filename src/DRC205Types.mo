@@ -1,7 +1,7 @@
 /**
  * Module     : DRC205Types.mo
- * CanisterId : 6ylab-kiaaa-aaaak-aacga-cai
- * Test       : ix3cb-4iaaa-aaaak-aagbq-cai
+ * CanisterId : lw5dr-uiaaa-aaaak-ae2za-cai
+ * Test       : lr4ff-zqaaa-aaaak-ae2zq-cai
  */
 import Principal "mo:base/Principal";
 import Array "mo:base/Array";
@@ -101,18 +101,28 @@ module {
         MAX_STORAGE_TRIES: ?Nat;
     };
 
+  public type Root = actor {
+    proxyList : shared query () -> async {root: Principal; list: [(Principal, Time.Time, Nat)]; current: ?(Principal, Time.Time, Nat)};
+    getTxnHash : shared composite query (_app: AppId, _txid: Txid, _merge: Bool) -> async [Text]; // Hex
+    getArchivedTxnBytes : shared composite query (_app: AppId, _txid: Txid) -> async [([Nat8], Time.Time)];
+    getArchivedTxn : shared composite query (_app: AppId, _txid: Txid) -> async [(TxnRecord, Time.Time)];
+    getArchivedTxnByIndex : shared composite query (_app: AppId, _pairBlockIndex: Nat) -> async [(TxnRecord, Time.Time)];
+    getArchivedDexTxns : shared composite query (_app: AppId, _start_desc: Nat, _length: Nat) -> async [TxnRecord];
+    getArchivedAccountTxns : shared composite query (_buckets_offset: ?Nat, _buckets_length: Nat, _account: AccountId, _app: ?AppId, _page: ?Nat32/*base 1*/, _size: ?Nat32) -> async 
+    {data: [(Principal, [(TxnRecord, Time.Time)])]; totalPage: Nat; total: Nat};
+  };
   public type Self = actor {
     version: shared query () -> async Nat8;
     fee : shared query () -> async (cycles: Nat); //cycles
-    store : shared (_txn: TxnRecord) -> async (); 
+    // store : shared (_txn: TxnRecord) -> async (); // @deprecated: This method will be deprecated
     storeBatch : shared (_txns: [TxnRecord]) -> async (); 
-    storeBytes: shared (_txid: Txid, _data: [Nat8]) -> async (); 
     storeBytesBatch: shared (_txns: [(_txid: Txid, _data: [Nat8])]) -> async (); 
-    bucket : shared query (_app: AppId, _txid: Txid, _step: Nat, _version: ?Nat8) -> async (bucket: ?BucketId);
-    bucketByIndex : shared query (_app: AppId, _blockIndex: Nat, _step: Nat, _version: ?Nat8) -> async (bucket: ?BucketId);
+    // bucket : shared query (_app: AppId, _txid: Txid, _step: Nat, _version: ?Nat8) -> async (bucket: ?BucketId); // @deprecated: This method will be deprecated
+    // bucketByIndex : shared query (_app: AppId, _blockIndex: Nat, _step: Nat, _version: ?Nat8) -> async (bucket: ?BucketId); // @deprecated: This method will be deprecated
     location : shared query (_app: AppId, _arg: {#txid: Txid; #index: Nat; #account: AccountId}, _version: ?Nat8) -> async [BucketId];
-    bucketList : shared query () -> async [BucketId];
+    bucketListSorted : shared query () -> async [(BucketId, Time.Time, Nat)];
   };
+  public type Proxy = Self;
   public type Bucket = actor {
     txnBytes: shared query (_app: AppId, _txid: Txid) -> async ?([Nat8], Time.Time);
     txnBytesHistory: shared query (_app: AppId, _txid: Txid) -> async [([Nat8], Time.Time)];
@@ -121,16 +131,19 @@ module {
     txnByIndex: shared query (_app: AppId, _blockIndex: Nat) -> async [(TxnRecord, Time.Time)];
     txnByAccountId: shared query (_accountId: AccountId, _app: ?AppId, _page: ?Nat32/*start from 1*/, _size: ?Nat32) -> async 
     {data: [(AppId, [(TxnRecord, Time.Time)])]; totalPage: Nat; total: Nat};
-    txnHash: shared query (_app: AppId, _txid: Txid, _index: Nat) -> async ?Text;
-    txnHash2: shared query (_app: AppId, _txid: Txid, _merge: Bool) -> async [Text];
+    txnHash: shared query (_app: AppId, _txid: Txid, _merge: Bool) -> async [Text];
     // txnBytesHash: shared query (_app: AppId, _txid: Txid, _index: Nat) -> async ?Text;
   };
   public type Impl = actor {
     drc205_getConfig : shared query () -> async Setting;
     drc205_canisterId : shared query () -> async Principal;
     drc205_events : shared query (_account: ?Address) -> async [TxnRecord];
+    drc205_events_filter : shared query (_account: ?Address, _startTime: ?Time.Time, _endTime: ?Time.Time) -> async ([TxnRecord], Bool);
     drc205_txn : shared query (_txid: Txid) -> async (txn: ?TxnRecord);
-    drc205_txn2 : shared (_txid: Txid) -> async (txn: ?TxnRecord);
+    // drc205_txn2 : shared composite query (_txid: Txid) -> async (txn: ?TxnRecord); // OPTIONAL
+    // drc205_archived_txns : shared composite query (_start_desc: Nat, _length: Nat) -> async [TxnRecord];
+    // drc205_archived_account_txns : shared composite query (_buckets_offset: ?Nat, _buckets_length: Nat, _account: AccountId, _app: ?AppId, _page: ?Nat32/*base 1*/, _size: ?Nat32) -> async 
+    // {data: [(Principal, [(TxnRecord, Time.Time)])]; totalPage: Nat; total: Nat};
   };
   public func arrayAppend<T>(a: [T], b: [T]) : [T]{
         let buffer = Buffer.Buffer<T>(1);

@@ -4,7 +4,7 @@
  * Stability  : Experimental
  * Description: DRC205 Swap Records Storage.
  * Refers     : https://github.com/iclighthouse/
- * Canister   : 6ylab-kiaaa-aaaak-aacga-cai
+ * Canister   : lw5dr-uiaaa-aaaak-ae2za-cai
  */
 
 import Array "mo:base/Array";
@@ -18,7 +18,7 @@ import Deque "mo:base/Deque";
 import Trie "mo:base/Trie";
 import Cycles "mo:base/ExperimentalCycles";
 import SHA224 "mo:sha224/SHA224";
-import CRC32 "./CRC32";
+import CRC32 "CRC32";
 import T "DRC205Types";
 
 module {
@@ -75,6 +75,16 @@ module {
 
     public class DRC205(_setting: Setting){
         var setting: Setting = _setting;
+        var rootCanisterId: Principal = Principal.fromText("lw5dr-uiaaa-aaaak-ae2za-cai");
+        if (setting.EN_DEBUG) {
+            rootCanisterId := Principal.fromText("lr4ff-zqaaa-aaaak-ae2zq-cai");
+        };
+        var proxies: [(Principal, Time.Time, Nat)] = [];
+        var currentProxy: Principal = Principal.fromText("6ylab-kiaaa-aaaak-aacga-cai");
+        if (setting.EN_DEBUG) {
+            currentProxy := Principal.fromText("ix3cb-4iaaa-aaaak-aagbq-cai");
+        };
+        var lastGetProxiesTime: Time.Time = 0;
         var txnRecords: Trie.Trie<Txid, TxnRecord> = Trie.empty(); 
         //var txns: Trie.Trie<Txid, [TxnRecord]> = Trie.empty(); 
         var globalTxns = Deque.empty<(Txid, Time.Time)>(); 
@@ -87,10 +97,24 @@ module {
         var storagePool = List.nil<(Txid, TxnRecord, Nat)>(); 
         var DRC205Fee : Nat = 0;
         var lastGetDRC205FeeTime : Time.Time = 0;
-        var lastStoreTime : Time.Time = 0;
 
         private func keyp(t: Principal) : Trie.Key<Principal> { return { key = t; hash = Principal.hash(t) }; };
         private func keyb(t: Blob) : Trie.Key<Blob> { return { key = t; hash = Blob.hash(t) }; };
+
+        private func _getProxies(): async* (){
+            lastGetProxiesTime := Time.now();
+            let rootActor: T.Root = actor(Principal.toText(rootCanisterId));
+            let res = await rootActor.proxyList();
+            if (res.list.size() > 0){
+                proxies := res.list;
+            };
+            switch(res.current){
+                case(?(canisterId, time, startIndex)){
+                    currentProxy := canisterId;
+                };
+                case(_){};
+            };
+        };
 
         private func pushGlobalTxns(_txid: Txid): (){
             // push new txid.
@@ -237,14 +261,17 @@ module {
 
         // public methods
         public func drc205CanisterId() : Principal{
-            if (setting.EN_DEBUG) {
-                return Principal.fromText("ix3cb-4iaaa-aaaak-aagbq-cai");
-            } else {
-                return Principal.fromText("6ylab-kiaaa-aaaak-aacga-cai");
-            };
+            return rootCanisterId;
         };
+        // @deprecated: This method will be deprecated
         public func drc205() : T.Self{
-            return actor(Principal.toText(drc205CanisterId()));
+            return actor(Principal.toText(currentProxy));
+        };
+        public func root() : T.Root{
+            return actor(Principal.toText(rootCanisterId));
+        };
+        public func proxy() : T.Proxy{
+            return actor(Principal.toText(currentProxy));
         };
         public func config(_config: Config) : Bool {
             setting := {
@@ -334,84 +361,97 @@ module {
                 };
             };
         };
-        public func getEvents(_account: ?AccountId) : [TxnRecord]{
+        public func getEvents(_account: ?AccountId, _startTime: ?Time.Time, _endTime: ?Time.Time) : (data: [TxnRecord], mayHaveArchived: Bool){
+            let startTime = Option.get(_startTime, 0);
+            let endTime = Option.get(_endTime, 0);
+            var mayHaveArchived: Bool = true;
             switch(_account) {
                 case(null){
                     var i: Nat = 0;
-                    return Array.chain(getLastTxns(null), func (value:Txid): [TxnRecord]{
+                    return (Array.chain(getLastTxns(null), func (value:Txid): [TxnRecord]{
                         if (i < getConfig().MAX_CACHE_NUMBER_PER){
                             i += 1;
                             switch(getTxnRecord(value)){
-                                case(?(r)){ return [r]; };
-                                case(_){ return []; };
+                                case(?(r)){ 
+                                    if (r.time < startTime) { mayHaveArchived := false; };
+                                    if (r.time >= startTime and (r.time <= endTime or endTime == 0)) return [r]; 
+                                };
+                                case(_){ };
                             };
-                        }else{ return []; };
-                    });
+                        }else{ };
+                        return [];
+                    }), mayHaveArchived);
                 };
                 case(?(account)){
-                    return Array.chain(getLastTxns(?account), func (value:Txid): [TxnRecord]{
+                    return (Array.chain(getLastTxns(?account), func (value:Txid): [TxnRecord]{
                         switch(getTxnRecord(value)){
-                            case(?(r)){ return [r]; };
-                            case(_){ return []; };
+                            case(?(r)){
+                                if (r.time < startTime) { mayHaveArchived := false; };
+                                if (r.time >= startTime and (r.time <= endTime or endTime == 0)) return [r]; 
+                            };
+                            case(_){ };
                         };
-                    });
+                        return [];
+                    }), mayHaveArchived);
                 };
             }
         };
+
         public func get2(_app: Principal, _txid: Txid) : async* (txn: ?TxnRecord){
-            var step: Nat = 0;
-            func _getTxn(_app: Principal, _txid: Txid) : async* ?TxnRecord{
-                switch(await drc205().bucket(_app, _txid, step, null)){
-                    case(?(bucketId)){
-                        let bucket: T.Bucket = actor(Principal.toText(bucketId));
-                        switch(await bucket.txn(_app, _txid)){
-                            case(?(txn, time)){ return ?txn; };
-                            case(_){
-                                step += 1;
-                                return await* _getTxn(_app, _txid);
-                            };
-                        };
+            for ((proxy, t, i) in proxies.vals()){
+                let proxyActor: T.Self = actor(Principal.toText(proxy));
+                let buckets = await proxyActor.location(_app, #txid(_txid), null);
+                for (bucketId in buckets.vals()){
+                    let bucket: T.Bucket = actor(Principal.toText(bucketId));
+                    switch(await bucket.txn(_app, _txid)){
+                        case(?(txn, time)){ return ?txn; };
+                        case(_){};
                     };
-                    case(_){ return null; };
                 };
             };
-            return await* _getTxn(_app, _txid);
+            return null;
         };
+
+        public func getProxyList() : [(Principal, Time.Time, Nat)]{
+            return proxies;
+        };
+
         public func getPool() : [(Txid, TxnRecord, Nat)]{
             return List.toArray(storagePool);
         };
         // records storage (DRC205 Standard)
         public func store() : async (){
+            if (Time.now() > lastGetProxiesTime + 28800000000000){ //8h
+                await* _getProxies();
+            };
             var _storing = List.nil<(Txid, TxnRecord, Nat)>();
             var _remaining = List.nil<(Txid, TxnRecord, Nat)>();
             if (Time.now() > lastGetDRC205FeeTime + 14400000000000){ //4h
                 lastGetDRC205FeeTime := Time.now();
                 DRC205Fee := await drc205().fee();
             };
-            if (Time.now() >= lastStoreTime + 10000000000){ // 10s
-                lastStoreTime := Time.now();
-                var storageFee = DRC205Fee;
-                var storeBatch: [TxnRecord] = [];
-                var i: Nat = 0;
-                for ((txid, txn, callCount) in List.toArray(List.reverse(storagePool)).vals()){
-                    if (i < 200){
-                        storeBatch := T.arrayAppend(storeBatch, [txn]); // the first item at 0 position
-                        _storing := List.push((txid, txn, callCount), _storing);
-                    }else{
-                        _remaining := List.push((txid, txn, callCount), _remaining);
-                    };
-                    i += 1;
+            var storageFee = DRC205Fee;
+            var storeBatch: [TxnRecord] = [];
+            var i: Nat = 0;
+            for ((txid, txn, callCount) in List.toArray(List.reverse(storagePool)).vals()){
+                if (i < 200){
+                    storeBatch := T.arrayAppend(storeBatch, [txn]); // the first item at 0 position
+                    _storing := List.push((txid, txn, callCount), _storing);
+                }else{
+                    _remaining := List.push((txid, txn, callCount), _remaining);
                 };
-                if (storeBatch.size() > 0){
-                    Cycles.add(storageFee * storeBatch.size());
-                    storagePool := List.nil<(Txid, TxnRecord, Nat)>();
-                    try{
-                        await drc205().storeBatch(storeBatch);
-                        storagePool := List.append(storagePool, _remaining);
-                    }catch(e){
-                        storagePool := List.append(storagePool, List.append(_remaining, _storing));
-                        lastGetDRC205FeeTime := 0;
-                    };
+                i += 1;
+            };
+            if (storeBatch.size() > 0){
+                Cycles.add(storageFee * storeBatch.size());
+                storagePool := List.nil<(Txid, TxnRecord, Nat)>();
+                try{
+                    await drc205().storeBatch(storeBatch);
+                    storagePool := List.append(storagePool, _remaining);
+                }catch(e){
+                    storagePool := List.append(storagePool, List.append(_remaining, _storing));
+                    lastGetDRC205FeeTime := 0;
+                    await* _getProxies();
                 };
             };
             // var item = List.pop(storagePool);
@@ -450,36 +490,6 @@ module {
                 globalTxns = globalTxns;
                 globalLastTxns = globalLastTxns;
                 accountLastTxns = accountLastTxns; 
-                storagePool = storagePool;
-            };
-        };
-        public func getDataBase() : DataTempV2 {
-            let _txnRecords = Trie.filter(txnRecords, func (k: Txid, v: TxnRecord): Bool{
-                v.time + 72*3600*1000000000 > Time.now()
-            });
-            let _globalTxns = (List.filter(globalTxns.0, func (t: (Txid, Time.Time)): Bool{
-                t.1 + 72*3600*1000000000 > Time.now()
-            }), List.filter(globalTxns.1, func (t: (Txid, Time.Time)): Bool{
-                t.1 + 72*3600*1000000000 > Time.now()
-            }));
-            let _accountLastTxns = Trie.mapFilter<AccountId, Deque.Deque<Txid>, Deque.Deque<Txid>>(accountLastTxns, func (k: AccountId, v: Deque.Deque<Txid>): ?Deque.Deque<Txid>{
-                let dq = (List.filter(v.0, func (t: Txid): Bool{
-                    Trie.some(_txnRecords, func (k: Txid, v: TxnRecord): Bool{ k == t })
-                }), List.filter(v.1, func (t: Txid): Bool{
-                    Trie.some(_txnRecords, func (k: Txid, v: TxnRecord): Bool{ k == t })
-                }));
-                if (List.size(dq.0) + List.size(dq.1) > 0){
-                    return ?dq;
-                }else{
-                    return null;
-                };
-            });
-            return {
-                setting = setting;
-                txnRecords = _txnRecords;
-                globalTxns = _globalTxns;
-                globalLastTxns = globalLastTxns;
-                accountLastTxns = _accountLastTxns;
                 storagePool = storagePool;
             };
         };

@@ -4,7 +4,7 @@
  * Stability  : Experimental
  * Description: DRC202 Token Records Storage.
  * Refers     : https://github.com/iclighthouse/
- * Canister   : y5a36-liaaa-aaaak-aacqa-cai
+ * Canister   : bffvb-aiaaa-aaaak-ae3ba-cai
  */
 
 import Array "mo:base/Array";
@@ -46,8 +46,17 @@ module {
     };
 
     public class DRC202(_setting: Setting, _tokenStd: Text){
-        var hasSetStd: Bool = false;
         var setting: Setting = _setting;
+        var rootCanisterId: Principal = Principal.fromText("bffvb-aiaaa-aaaak-ae3ba-cai");
+        if (setting.EN_DEBUG) {
+            rootCanisterId := Principal.fromText("bcetv-nqaaa-aaaak-ae3bq-cai");
+        };
+        var proxies: [(Principal, Time.Time, Nat)] = [];
+        var currentProxy: Principal = Principal.fromText("y5a36-liaaa-aaaak-aacqa-cai");
+        if (setting.EN_DEBUG) {
+            currentProxy := Principal.fromText("iq2ev-rqaaa-aaaak-aagba-cai");
+        };
+        var hasSetStd: Bool = false;
         var txnRecords: Trie.Trie<Txid, TxnRecord> = Trie.empty(); 
         var globalTxns = Deque.empty<(Txid, Time.Time)>(); 
         var globalLastTxns = Deque.empty<Txid>(); 
@@ -56,18 +65,34 @@ module {
         var storeRecords = List.nil<(Txid, Nat)>(); 
         var DRC202Fee : Nat = 0;
         var lastGetDRC202FeeTime : Time.Time = 0;
+        var lastGetProxiesTime : Time.Time = 0;
         var errCount: Nat = 0;
         public func getErrCount() : Nat{ errCount };
 
         private func keyp(t: Principal) : Trie.Key<Principal> { return { key = t; hash = Principal.hash(t) }; };
         private func keyb(t: Blob) : Trie.Key<Blob> { return { key = t; hash = Blob.hash(t) }; };
 
+        private func _getProxies(): async* (){
+            lastGetProxiesTime := Time.now();
+            let rootActor: T.Root = actor(Principal.toText(rootCanisterId));
+            let res = await rootActor.proxyList();
+            if (res.list.size() > 0){
+                proxies := res.list;
+            };
+            switch(res.current){
+                case(?(canisterId, time, startIndex)){
+                    currentProxy := canisterId;
+                };
+                case(_){};
+            };
+        };
+
         private func pushGlobalTxns(_txid: Txid): (){ 
             // push new txid.
             globalTxns := Deque.pushFront(globalTxns, (_txid, Time.now()));
             globalLastTxns := Deque.pushFront(globalLastTxns, _txid);
             var size = List.size(globalLastTxns.0) + List.size(globalLastTxns.1);
-            while (size > setting.MAX_CACHE_NUMBER_PER){
+            while (size > setting.MAX_CACHE_NUMBER_PER * 5 or size > 2000){
                 size -= 1;
                 switch (Deque.popBack(globalLastTxns)){
                     case(?(q, v)){
@@ -312,14 +337,17 @@ module {
             };
         };
         public func drc202CanisterId() : Principal{
-            if (setting.EN_DEBUG) {
-                return Principal.fromText("iq2ev-rqaaa-aaaak-aagba-cai");
-            } else {
-                return Principal.fromText("y5a36-liaaa-aaaak-aacqa-cai");
-            };
+            return rootCanisterId;
         };
+        // @deprecated: This method will be deprecated
         public func drc202() : T.Self{
-            return actor(Principal.toText(drc202CanisterId()));
+            return actor(Principal.toText(currentProxy));
+        };
+        public func root() : T.Root{
+            return actor(Principal.toText(rootCanisterId));
+        };
+        public func proxy() : T.Proxy{
+            return actor(Principal.toText(currentProxy));
         };
         public func config(_config: Config) : Bool {
             setting := {
@@ -363,60 +391,59 @@ module {
                 };
             };
         };
-        public func getEvents(_account: ?AccountId) : [TxnRecord]{
+        public func getEvents(_account: ?AccountId, _startTime: ?Time.Time, _endTime: ?Time.Time) : (data: [TxnRecord], mayHaveArchived: Bool){
+            let startTime = Option.get(_startTime, 0);
+            let endTime = Option.get(_endTime, 0);
+            var mayHaveArchived: Bool = true;
             switch(_account) {
                 case(null){
                     var i: Nat = 0;
-                    return Array.chain(getLastTxns(null), func (value:Txid): [TxnRecord]{
+                    return (Array.chain(getLastTxns(null), func (value:Txid): [TxnRecord]{
                         if (i < getConfig().MAX_CACHE_NUMBER_PER){
                             i += 1;
                             switch(getTxnRecord(value)){
-                                case(?(r)){ return [r]; };
-                                case(_){ return []; };
+                                case(?(r)){ 
+                                    if (r.timestamp < startTime) { mayHaveArchived := false; };
+                                    if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)) return [r]; 
+                                };
+                                case(_){ };
                             };
-                        }else{ return []; };
-                    });
+                        }else{ };
+                        return [];
+                    }), mayHaveArchived);
                 };
                 case(?(account)){
-                    return Array.chain(getLastTxns(?account), func (value:Txid): [TxnRecord]{
+                    return (Array.chain(getLastTxns(?account), func (value:Txid): [TxnRecord]{
                         switch(getTxnRecord(value)){
-                            case(?(r)){ return [r]; };
-                            case(_){ return []; };
+                            case(?(r)){
+                                if (r.timestamp < startTime) { mayHaveArchived := false; };
+                                if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)) return [r]; 
+                            };
+                            case(_){ };
                         };
-                    });
+                        return [];
+                    }), mayHaveArchived);
                 };
             }
         };
         
-        // public func get2(_token: Principal, _txid: Txid) : async (txn: ?TxnRecord){
-        //     var step: Nat = 0;
-        //     func _getTxn(_token: Principal, _txid: Txid) : async* ?TxnRecord{
-        //         switch(await drc202().bucket(_token, _txid, step, null)){
-        //             case(?(bucketId)){
-        //                 let bucket: T.Bucket = actor(Principal.toText(bucketId));
-        //                 switch(await bucket.txn(_token, _txid)){
-        //                     case(?(txn, time)){ return ?txn; };
-        //                     case(_){
-        //                         step += 1;
-        //                         return await* _getTxn(_token, _txid);
-        //                     };
-        //                 };
-        //             };
-        //             case(_){ return null; };
-        //         };
-        //     };
-        //     return await* _getTxn(_token, _txid);
-        // };
-        public func get2(_token: Principal, _txid: Txid) : async (txn: ?TxnRecord){
-            let buckets = await drc202().location(_token, #txid(_txid), null);
-            for (bucketId in buckets.vals()){
-                let bucket: T.Bucket = actor(Principal.toText(bucketId));
-                switch(await bucket.txn(_token, _txid)){
-                    case(?(txn, time)){ return ?txn; };
-                    case(_){};
+        public func get2(_token: Principal, _txid: Txid) : async* (txn: ?TxnRecord){
+            for ((proxy, t, i) in proxies.vals()){
+                let proxyActor: T.Self = actor(Principal.toText(proxy));
+                let buckets = await proxyActor.location(_token, #txid(_txid), null);
+                for (bucketId in buckets.vals()){
+                    let bucket: T.Bucket = actor(Principal.toText(bucketId));
+                    switch(await bucket.txn(_token, _txid)){
+                        case(?(txn, time)){ return ?txn; };
+                        case(_){};
+                    };
                 };
             };
             return null;
+        };
+
+        public func getProxyList() : [(Principal, Time.Time, Nat)]{
+            return proxies;
         };
 
         public func getPool() : [(Txid, Nat)]{
@@ -424,6 +451,9 @@ module {
         };
         // records storage (DRC202 Standard)
         public func store() : async (){
+            if (Time.now() > lastGetProxiesTime + 28800000000000){ //8h
+                await* _getProxies();
+            };
             if (not(hasSetStd)){
                 try{
                     await drc202().setStd(_tokenStd);
@@ -461,6 +491,8 @@ module {
                     storeRecords := List.append(storeRecords, _remaining);
                 }catch(e){
                     storeRecords := List.append(storeRecords, List.append(_remaining, _storing));
+                    lastGetDRC202FeeTime := 0;
+                    await* _getProxies();
                 };
             };
         };
