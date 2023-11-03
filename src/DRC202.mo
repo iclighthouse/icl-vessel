@@ -398,31 +398,62 @@ module {
             switch(_account) {
                 case(null){
                     var i: Nat = 0;
-                    return (Array.chain(getLastTxns(null), func (value:Txid): [TxnRecord]{
+                    // fix an issue: https://github.com/dfinity/motoko-base/issues/595
+                    // return (Array.chain(getLastTxns(null), func (value:Txid): [TxnRecord]{
+                    //     if (i < getConfig().MAX_CACHE_NUMBER_PER){
+                    //         i += 1;
+                    //         switch(getTxnRecord(value)){
+                    //             case(?(r)){ 
+                    //                 if (r.timestamp < startTime) { mayHaveArchived := false; };
+                    //                 if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)) return [r]; 
+                    //             };
+                    //             case(_){ };
+                    //         };
+                    //     }else{ };
+                    //     return [];
+                    // }), mayHaveArchived);
+                    var data: [TxnRecord] = [];
+                    for (txid in getLastTxns(null).vals()){
                         if (i < getConfig().MAX_CACHE_NUMBER_PER){
                             i += 1;
-                            switch(getTxnRecord(value)){
+                            switch(getTxnRecord(txid)){
                                 case(?(r)){ 
                                     if (r.timestamp < startTime) { mayHaveArchived := false; };
-                                    if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)) return [r]; 
+                                    if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)){
+                                        data := T.arrayAppend(data, [r]);
+                                    }; 
                                 };
                                 case(_){ };
                             };
-                        }else{ };
-                        return [];
-                    }), mayHaveArchived);
+                        };
+                    };
+                    return (data, mayHaveArchived);
                 };
                 case(?(account)){
-                    return (Array.chain(getLastTxns(?account), func (value:Txid): [TxnRecord]{
-                        switch(getTxnRecord(value)){
-                            case(?(r)){
+                    // fix an issue: https://github.com/dfinity/motoko-base/issues/595
+                    // return (Array.chain(getLastTxns(?account), func (value:Txid): [TxnRecord]{
+                    //     switch(getTxnRecord(value)){
+                    //         case(?(r)){
+                    //             if (r.timestamp < startTime) { mayHaveArchived := false; };
+                    //             if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)) return [r]; 
+                    //         };
+                    //         case(_){ };
+                    //     };
+                    //     return [];
+                    // }), mayHaveArchived);
+                    var data: [TxnRecord] = [];
+                    for (txid in getLastTxns(?account).vals()){
+                        switch(getTxnRecord(txid)){
+                            case(?(r)){ 
                                 if (r.timestamp < startTime) { mayHaveArchived := false; };
-                                if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)) return [r]; 
+                                if (r.timestamp >= startTime and (r.timestamp <= endTime or endTime == 0)){
+                                    data := T.arrayAppend(data, [r]);
+                                }; 
                             };
                             case(_){ };
                         };
-                        return [];
-                    }), mayHaveArchived);
+                    };
+                    return (data, mayHaveArchived);
                 };
             }
         };
