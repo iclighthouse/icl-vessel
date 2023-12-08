@@ -27,23 +27,7 @@ module {
         return Int.abs(Time.now() / 1000000000);
     };
     public func trieItems2<V>(_trie: Trie.Trie<Nat, V>, _firstIndex: Nat, _height: Nat, _page: ListPage, _size: ListSize) : TrieList<Nat, V>{
-        var length = Nat.sub(_height, _firstIndex);
-        if (length == 0){
-            return {data = []; totalPage = 0; total = 0};
-        };
-        let page = _page;
-        let size = Nat.max(_size, 1);
-        let start = Nat.sub(_height, Nat.sub(page, 1) * size);
-        var data : [(Nat, V)] = [];
-        var i: Nat = start;
-        while(i > 0 and Nat.sub(start, i) < size){
-            i -= 1;
-            switch(Trie.get<Nat, V>(_trie, keyn(i), Nat.equal)){
-                case(?(item)){ data := Tools.arrayAppend(data, [(i, item)]); };
-                case(_){};
-            };
-        };
-        return {data = data; totalPage = Nat.sub(Nat.max(length,1), 1) / size + 1; total = length};
+        return Tools.trieList<V>(_trie, _firstIndex, _height, _page, _size);
     };
 
     public func putAccountEvent(_var: AccountEvents, _firstIndex: Nat, _a: AccountId, _blockIndex: BlockHeight) : AccountEvents{

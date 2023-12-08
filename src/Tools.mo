@@ -1,5 +1,5 @@
 /**
- * Module     : Tools.mo v 1.0
+ * Module     : Tools.mo v 1.1
  * Author     : Modified by ICLight.house Team
  * Stability  : Experimental
  * Description: Convert subaccount to principal; Convert principal to accoundId.
@@ -30,7 +30,7 @@ import Binary "Binary";
 import Hash "mo:base/Hash";
 import Float "mo:base/Float";
 import Int64 "mo:base/Int64";
-//for test
+import Trie "mo:base/Trie";
 import Time "mo:base/Time";
 import Int "mo:base/Int";
 
@@ -303,6 +303,7 @@ module {
 
     //ICRC1 Accout Encoding/Decoding (Please use the new module ICRC1Account)
     //Test: https://m7sm4-2iaaa-aaaab-qabra-cai.ic0.app/?tag=573678753
+    /// @deprecated
     public func icrc1Encode(_account: {owner: Principal; subaccount: ?Blob}): Blob{
         switch(_account.subaccount){
             case(null){
@@ -323,6 +324,8 @@ module {
             };
         };
     };
+
+    /// @deprecated
     public func icrc1Decode(_account: Blob): ?{owner: Principal; subaccount: ?Blob}{
         let accountRaw = Blob.toArray(_account);
         let len = accountRaw.size();
@@ -362,5 +365,60 @@ module {
         }else{
             return #Other(_account);
         };
+    };
+
+    // Trie 
+    public type ListPage = Nat;
+    public type ListSize = Nat;
+    public type TrieList<K, V> = {data: [(K, V)]; total: Nat; totalPage: Nat; };
+
+    public func keyp(t: Principal) : Trie.Key<Principal> { return { key = t; hash = Principal.hash(t) }; };
+    public func keyn(t: Nat) : Trie.Key<Nat> { return { key = t; hash = natHash(t) }; };
+    public func keyb(t: Blob) : Trie.Key<Blob> { return { key = t; hash = Blob.hash(t) }; };
+    public func keyt(t: Text) : Trie.Key<Text> { return { key = t; hash = Text.hash(t) }; };
+
+    public func trieItems<K, V>(_trie: Trie.Trie<K,V>, _page: ListPage, _size: ListSize) : 
+    TrieList<K, V> {
+        let length = Trie.size(_trie);
+        if (_page < 1 or _size < 1){
+            return {data = []; totalPage = 0; total = length; };
+        };
+        let offset = Nat.sub(_page, 1) * _size;
+        var totalPage: Nat = length / _size;
+        if (totalPage * _size < length) { totalPage += 1; };
+        if (offset >= length){
+            return {data = []; totalPage = totalPage; total = length; };
+        };
+        let end: Nat = offset + Nat.sub(_size, 1);
+        var i: Nat = 0;
+        var res: [(K, V)] = [];
+        for ((k,v) in Trie.iter<K, V>(_trie)){
+            if (i >= offset and i <= end){
+                res := arrayAppend(res, [(k,v)]);
+            };
+            i += 1;
+        };
+        return {data = res; totalPage = totalPage; total = length; };
+    };
+    
+    public func trieList<V>(_trie: Trie.Trie<Nat, V>, _firstIndex: Nat, _height: Nat, _page: ListPage, _size: ListSize) : 
+    TrieList<Nat, V>{
+        var length = Nat.sub(_height, _firstIndex);
+        if (length == 0){
+            return {data = []; totalPage = 0; total = 0};
+        };
+        let page = _page;
+        let size = Nat.max(_size, 1);
+        let start = Nat.sub(_height, Nat.sub(page, 1) * size);
+        var data : [(Nat, V)] = [];
+        var i: Nat = start;
+        while(i > 0 and Nat.sub(start, i) < size){
+            i -= 1;
+            switch(Trie.get<Nat, V>(_trie, keyn(i), Nat.equal)){
+                case(?(item)){ data := arrayAppend(data, [(i, item)]); };
+                case(_){};
+            };
+        };
+        return {data = data; totalPage = Nat.sub(Nat.max(length,1), 1) / size + 1; total = length};
     };
 };
