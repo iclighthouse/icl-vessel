@@ -181,4 +181,72 @@ module{
         };
         return canisters;
     };
+
+    /// Cycles Monitor Class
+    /// This is a refactored class that wraps the above functionality.
+    /// This module is updated to be compatible with previous versions.
+    public class CyclesMonitor(_initCycles: Nat, _minLocalCycles: Nat, _purchaseCyclesWithICPe8s: Nat){
+        private var canisters: MonitoredCanisters = Trie.empty(); 
+
+        public func getCanisters(): MonitoredCanisters{
+            return canisters;
+        };
+
+        public func setCanisters(_canisters: MonitoredCanisters): (){
+            canisters := _canisters;
+        };
+
+        public func topupCycles(_app: Principal) : async* (){
+            let ic: IC = actor("aaaaa-aa");
+            let canisterStatus = await* get_canister_status(_app);
+            switch(Trie.get(canisters, keyp(_app), Principal.equal)){
+                case(?(totalCycles)){
+                    var addCycles: Nat = 0;
+                    if (totalCycles < _initCycles * 5 and canisterStatus.cycles < _initCycles * 2 / 3){
+                        addCycles := _initCycles*2;
+                    }else if (totalCycles >= _initCycles * 5 and totalCycles < _initCycles * 20 and canisterStatus.cycles < _initCycles * 2){
+                        addCycles := _initCycles*4;
+                    }else if (totalCycles >= _initCycles * 20 and totalCycles < _initCycles * 100 and canisterStatus.cycles < _initCycles * 4){
+                        addCycles := _initCycles*8;
+                    }else if (totalCycles >= _initCycles * 100 and canisterStatus.cycles < _initCycles * 8){
+                        addCycles := _initCycles*16;
+                    }else{};
+                    if (addCycles > 0){
+                        Cycles.add(addCycles);
+                        let res = await ic.deposit_cycles({canister_id = _app });
+                        canisters := Trie.put(canisters, keyp(_app), Principal.equal, totalCycles+addCycles).0;
+                    };
+                };
+                case(_){
+                    // canisters := Trie.put(canisters, keyp(_app), Principal.equal, canisterStatus.cycles).0;
+                };
+            };
+        };
+
+        public func putCanister(_app: Principal) : async* (){
+            let ic: IC = actor("aaaaa-aa");
+            let canisterStatus = await* get_canister_status(_app);
+            canisters := Trie.put(canisters, keyp(_app), Principal.equal, canisterStatus.cycles).0;
+        };
+
+        public func removeCanister(_app: Principal) : (){
+            canisters := Trie.remove(canisters, keyp(_app), Principal.equal).0;
+        };
+
+        public func run(_this: Principal) : async (){
+            let cyclesBalance = Cycles.balance();
+            if (cyclesBalance < _minLocalCycles and _purchaseCyclesWithICPe8s > 0){
+                // Converting ICP to Cycles
+                try{
+                    ignore await* icpToCycles(_this, null, _purchaseCyclesWithICPe8s);
+                }catch(e){};
+            };
+            for ((canisterId, cycles) in Trie.iter(canisters)){
+                try{
+                    await* topupCycles(canisterId);
+                }catch(e){};
+            };
+        };
+    };
+
 };
