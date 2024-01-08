@@ -4,7 +4,7 @@ import DRC205 "DRC205";
 
 module {
     public type DexName = Text;
-    public type TokenStd = DRC205.TokenStd; // #cycles token principal = CF canister
+    public type TokenStd = DRC205.TokenStd; 
     public type TokenSymbol = Text;
     public type TokenInfo = (Principal, TokenSymbol, TokenStd);
     //public type Pair = (Principal, Principal);
@@ -59,6 +59,7 @@ module {
             spreadRate: Nat; // e.g. 10000, ppm  x/1000000
             threshold: Nat; // e.g. 1000000000000 token1, After the total liquidity exceeds this threshold, the LP adds liquidity up to a limit of volFactor times his trading volume.
             volFactor: Nat; // e.g. 2
+            creator: ?AccountId;
         }) -> async (canister: Principal);
         maker_update : shared (_pair: Principal, _maker: Principal, _name:?Text, _version: Text) -> async (canister: ?Principal);
         maker_rollback : shared (_pair: Principal, _maker: Principal) -> async (canister: ?Principal);
