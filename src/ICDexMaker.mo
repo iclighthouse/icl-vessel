@@ -110,7 +110,7 @@ module {
             withdrawalFee: Float;
             poolThreshold: Amount;
             volFactor: Nat; // token1
-            gridSoid: ?Nat;
+            gridSoid: [?Nat];
             shareDecimals: Nat8;
             pairInfo: {
                 pairPrincipal: Principal;
@@ -149,8 +149,8 @@ module {
         resetLocalBalance: shared () -> async PoolBalance;
         dexWithdraw: shared (_token0: Amount, _token1: Amount) -> async (token0: Amount, token1: Amount);
         dexDeposit: shared (_token0: Amount, _token1: Amount) -> async (token0: Amount, token1: Amount);
-        deleteGridOrder: shared () -> async ();
-        createGridOrder: shared () -> async ();
+        deleteGridOrder: shared (_gridOrder: {#First; #Second}) -> async ();
+        createGridOrder: shared (_gridOrder: {#First; #Second}) -> async ();
         cancelAllOrders: shared () -> async ();
     };
 };
