@@ -31,7 +31,6 @@ module {
     };
     public type TokenSymbol = Text;
     public type TokenInfo = (Principal, TokenSymbol, TokenStd);
-    //type OrderType = { #Make; #Take; };
     public type OperationType = {
         #AddLiquidity;
         #RemoveLiquidity;
@@ -163,11 +162,12 @@ module {
     public type ListPage = Nat;
     public type ListSize = Nat;
     public type Self = actor {
-        //create : shared (_sa: ?Sa) -> async (Text, Nat); // (TxAccount, Nonce)
         getTxAccount : shared query (_account: Address) -> async ({owner: Principal; subaccount: ?Blob}, Text, Nonce, Txid); // (ICRC1.Account, TxAccount, Nonce, Txid)
-        trade : shared (_order: OrderPrice, _orderType: OrderType, _expiration: ?PeriodNs, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data) -> async TradingResult;
-        trade_b : shared (_order: OrderPrice, _orderType: OrderType, _expiration: ?PeriodNs, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data, _brokerage: ?{broker: Principal; rate: Float}) -> async TradingResult;
-        tradeMKT : shared (_token: DebitToken, _value: Amount, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data) -> async TradingResult;
+        tradeCore : shared (_order: OrderPrice, _orderType: OrderType, _expiration: ?PeriodNs, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data,
+            _brokerage: ?{broker: Principal; rate: Float}, _quickly: ?Bool) -> async TradingResult;
+        trade : shared (_order: OrderPrice, _orderType: OrderType, _expiration: ?PeriodNs, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data) -> async TradingResult; // @deprecated: This method will be deprecated
+        trade_b : shared (_order: OrderPrice, _orderType: OrderType, _expiration: ?PeriodNs, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data, _brokerage: ?{broker: Principal; rate: Float}) -> async TradingResult; // @deprecated: This method will be deprecated
+        tradeMKT : shared (_token: DebitToken, _value: Amount, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data) -> async TradingResult;// @deprecated: This method will be deprecated
         tradeMKT_b : shared (_token: DebitToken, _value: Amount, _limitPrice: ?Nat, _nonce: ?Nonce, _sa: ?Sa, _data: ?Data, _brokerage: ?{broker: Principal; rate: Float}) -> async TradingResult;
         cancel : shared (_nonce: Nonce, _sa: ?Sa) -> async ();
         cancelByTxid : shared (_txid: Txid, _sa: ?Sa) -> async ();
