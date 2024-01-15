@@ -270,48 +270,51 @@ module {
             };
         };
     };
-    private func _popOrderPrice(_list: List.List<(Txid, OrderPrice)>, _temp: List.List<(Txid, OrderPrice)>, _condition: {#ge: Nat; #le: Nat; }) : 
+    private func _pop(_list: List.List<(Txid, OrderPrice)>, _temp: List.List<(Txid, OrderPrice)>, _condition: {#ge: Nat; #le: Nat; #txidEq: Txid }) : 
     (list: List.List<(Txid, OrderPrice)>, temp: List.List<(Txid, OrderPrice)>) {
         var list = _list;
         var temp = _temp;
         var item = List.pop(list);
-        switch(item.0){
-            case(?(txid, orderPrice)){
-                switch(_condition){
-                    case(#ge(value)){
-                        if (orderPrice.price >= value){
-                            list := item.1;
-                            temp := List.push((txid, orderPrice), temp);
-                            return _popOrderPrice(list, temp, _condition);
-                        }else {
-                            return (list, temp);
-                        };
-                    };
-                    case(#le(value)){
-                        if (orderPrice.price <= value){
-                            list := item.1;
-                            temp := List.push((txid, orderPrice), temp);
-                            return _popOrderPrice(list, temp, _condition);
-                        }else {
-                            return (list, temp);
-                        };
-                    };
-                    // case(#txidEq(_txid)){
-                    //     if (_txid == txid){
-                    //         list := item.1;
-                    //         return (list, temp);
-                    //     }else{
-                    //         list := item.1;
-                    //         temp := List.push((txid, orderPrice), temp);
-                    //         return _popOrderPrice(list, temp, _condition);
-                    //     };
-                    // };
+        switch(item.0, _condition){
+            case(?(txid, orderPrice), #ge(value)){
+                if (orderPrice.price >= value){
+                    list := item.1;
+                    temp := List.push((txid, orderPrice), temp);
+                    return _pop(list, temp, _condition);
+                }else {
+                    return (list, temp);
                 };
             };
-            case(_){ return (list, temp) };
+            case(?(txid, orderPrice), #le(value)){
+                if (orderPrice.price <= value){
+                    list := item.1;
+                    temp := List.push((txid, orderPrice), temp);
+                    return _pop(list, temp, _condition);
+                }else {
+                    return (list, temp);
+                };
+            };
+            case(?(txid, orderPrice), #txidEq(_txid)){
+                if (_txid == txid){
+                    list := _push(item.1, temp);
+                    temp := List.nil<(Txid, OrderPrice)>();
+                    temp := List.push((txid, orderPrice), temp);
+                    return (list, temp);
+                }else{
+                    list := item.1;
+                    temp := List.push((txid, orderPrice), temp);
+                    return _pop(list, temp, _condition);
+                };
+            };
+            case(_, #txidEq(_txid)){ 
+                return (_push(list, temp), List.nil<(Txid, OrderPrice)>())
+            };
+            case(_){ 
+                return (list, temp) 
+            };
         };
     };
-    private func _pushOrderPrice(_list: List.List<(Txid, OrderPrice)>, _temp: List.List<(Txid, OrderPrice)>) : List.List<(Txid, OrderPrice)>{
+    private func _push(_list: List.List<(Txid, OrderPrice)>, _temp: List.List<(Txid, OrderPrice)>) : List.List<(Txid, OrderPrice)>{
         var list = _list;
         var temp = _temp;
         var tempItem = List.pop(temp);
@@ -319,7 +322,7 @@ module {
             case(?(txid, orderPrice)){
                 temp := tempItem.1;
                 list := List.push((txid, orderPrice), list);
-                return _pushOrderPrice(list, temp);
+                return _push(list, temp);
             };
             case(_){ return list };
         };
@@ -331,22 +334,37 @@ module {
             case(#Buy){
                 var bid = _ob.bid;
                 var temp: List.List<(Txid, OrderPrice)> = List.nil();
-                let res = _popOrderPrice(bid, temp, #ge(_orderPrice.price));
+                let res = _pop(bid, temp, #ge(_orderPrice.price));
                 bid := res.0;
                 temp := res.1;
                 bid := List.push((_txid, _orderPrice), bid);
-                bid := _pushOrderPrice(bid, temp);
+                bid := _push(bid, temp);
                 return { ask = _ob.ask; bid = bid };
             };
             case(#Sell){
                 var ask = _ob.ask;
                 var temp: List.List<(Txid, OrderPrice)> = List.nil();
-                let res = _popOrderPrice(ask, temp, #le(_orderPrice.price));
+                let res = _pop(ask, temp, #le(_orderPrice.price));
                 ask := res.0;
                 temp := res.1;
                 ask := List.push((_txid, _orderPrice), ask);
-                ask := _pushOrderPrice(ask, temp);
+                ask := _push(ask, temp);
                 return { ask = ask; bid = _ob.bid };
+            };
+        };
+    };
+
+    private func _remove(_ob: OrderBook, _txid: Txid, _side: OrderSide) : OrderBook{
+        switch(_side){
+            case(#Buy){
+                var temp: List.List<(Txid, OrderPrice)> = List.nil();
+                let res = _pop(_ob.bid, temp, #txidEq(_txid));
+                return { ask = _ob.ask; bid = res.0 };
+            };
+            case(#Sell){
+                var temp: List.List<(Txid, OrderPrice)> = List.nil();
+                let res = _pop(_ob.ask, temp, #txidEq(_txid));
+                return { ask = res.0; bid = _ob.bid };
             };
         };
     };
@@ -485,21 +503,18 @@ module {
     };
     
     public func remove(_ob: OrderBook, _txid: Txid, _side: ?OrderSide) : OrderBook{
-        var ask = _ob.ask;
-        var bid = _ob.bid;
         switch(_side){
             case(?(#Buy)){
-                bid := List.filter(bid, func (item:(Txid, OrderPrice)):Bool{ item.0 != _txid });
+                return _remove(_ob, _txid, #Buy);
             };
             case(?(#Sell)){
-                ask := List.filter(ask, func (item:(Txid, OrderPrice)):Bool{ item.0 != _txid });
+                return _remove(_ob, _txid, #Sell);
             };
             case(_){
-                bid := List.filter(bid, func (item:(Txid, OrderPrice)):Bool{ item.0 != _txid });
-                ask := List.filter(ask, func (item:(Txid, OrderPrice)):Bool{ item.0 != _txid });
+                let obTemp = _remove(_ob, _txid, #Buy);
+                return _remove(obTemp, _txid, #Sell);
             };
         };
-        return { ask = ask; bid = bid; };
     };
 
     /// Warning: Do not call clear() lightly. Calling this method may result in inconsistent order status data.
