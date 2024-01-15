@@ -110,6 +110,7 @@ module {
     public type GridPrices = {midPrice: ?Price; buy: [Price]; sell: [Price] };
     public type GridOrder = {
         setting: GridSetting;
+        level1Filled: ?{ buy1: Amount; sell1: Amount};
         gridPrices: GridPrices;  // ordered
     };
     // IcebergOrder
