@@ -105,6 +105,7 @@ module {
             paused: Bool;
             initialized: Bool;
             sysTransactionLock: Bool;
+            sysGlobalLock: ?Bool;
             visibility: {#Public; #Private};
             creator: AccountId;
             withdrawalFee: Float;
