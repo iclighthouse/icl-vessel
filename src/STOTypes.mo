@@ -111,6 +111,12 @@ module {
     public type GridOrder = {
         setting: GridSetting;
         level1Filled: ?{ buy1: Amount; sell1: Amount};
+        filter: ?{
+            gridTop : Price;
+            buyingBlankLocked : [(gridTop: Price, upperLimit: Price)];
+            gridBottom : Price;
+            sellingBlankLocked: [(lowerLimit: Price, gridBottom: Price)];
+        };
         gridPrices: GridPrices;  // ordered
     };
     // IcebergOrder
