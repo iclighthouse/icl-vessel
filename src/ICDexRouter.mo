@@ -62,7 +62,6 @@ module {
             creator: ?AccountId;
         }) -> async (canister: Principal);
         maker_update : shared (_pair: Principal, _maker: Principal, _name:?Text, _version: Text) -> async (canister: ?Principal);
-        maker_rollback : shared (_pair: Principal, _maker: Principal) -> async (canister: ?Principal);
         maker_remove : shared (_pair: Principal, _maker: Principal) -> async ();
     };
 };

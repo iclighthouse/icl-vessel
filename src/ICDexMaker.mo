@@ -145,7 +145,7 @@ module {
         };
         // admin
         config: shared (_config: Config) -> async Bool;
-        transactionLock: shared (_act: {#lock; #unlock}) -> async Bool;
+        transactionLock: shared (_sysTransactionLock: ?{#lock; #unlock}, _sysGlobalLock: ?{#lock; #unlock}) -> async Bool;
         setPause: shared (_pause: Bool) -> async Bool;
         resetLocalBalance: shared () -> async PoolBalance;
         dexWithdraw: shared (_token0: Amount, _token1: Amount) -> async (token0: Amount, token1: Amount);
