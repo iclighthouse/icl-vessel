@@ -140,8 +140,8 @@ module {
             poolShares: Shares;
             poolShareWeighted: ShareWeighted;
             latestUnitNetValue: UnitNetValue;
-            apy24h: {token0: Float; token1: Float};
-            apy7d: {token0: Float; token1: Float};
+            apy24h: {token0: Float; token1: Float; apy: ?Float};
+            apy7d: {token0: Float; token1: Float; apy: ?Float};
         };
         // admin
         config: shared (_config: Config) -> async Bool;
