@@ -3,7 +3,6 @@ import Nat8 "mo:base/Nat8";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
-import Result "mo:base/Result";
 
 module {
     public type ByteOrder = {

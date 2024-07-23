@@ -7,9 +7,7 @@
  * Canister   : lw5dr-uiaaa-aaaak-ae2za-cai
  */
 
-import Array "mo:base/Array";
 import Principal "mo:base/Principal";
-import Hash "mo:base/Hash";
 import Blob "mo:base/Blob";
 import Option "mo:base/Option";
 import Time "mo:base/Time";
@@ -93,7 +91,6 @@ module {
         //var globalLastTxids = Deque.empty<(Txid, Nat)>(); 
         var accountLastTxns: Trie.Trie<AccountId, Deque.Deque<Txid>> = Trie.empty(); 
         //var accountLastTxids: Trie.Trie<AccountId, Deque.Deque<(Txid, Nat)>> = Trie.empty(); 
-        var storeRecords = List.nil<(Txid, Nat)>(); 
         var storagePool = List.nil<(Txid, TxnRecord, Nat)>(); 
         var DRC205Fee : Nat = 0;
         var lastGetDRC205FeeTime : Time.Time = 0;
@@ -474,7 +471,7 @@ module {
                 i += 1;
             };
             if (storeBatch.size() > 0){
-                Cycles.add(storageFee * storeBatch.size());
+                Cycles.add<system>(storageFee * storeBatch.size());
                 storagePool := List.nil<(Txid, TxnRecord, Nat)>();
                 try{
                     await drc205().storeBatch(storeBatch);

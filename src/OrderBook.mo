@@ -7,7 +7,6 @@
  */
 import Nat "mo:base/Nat";
 import Nat64 "mo:base/Nat64";
-import Int64 "mo:base/Int64";
 import Int "mo:base/Int";
 import Float "mo:base/Float";
 import Option "mo:base/Option";

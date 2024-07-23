@@ -10,7 +10,6 @@ import Blob "mo:base/Blob";
 import Nat64 "mo:base/Nat64";
 import Trie "mo:base/Trie";
 import Option "mo:base/Option";
-import Time "mo:base/Time";
 import Error "mo:base/Error";
 import Prelude "mo:base/Prelude";
 import Cycles "mo:base/ExperimentalCycles";
@@ -141,8 +140,8 @@ module{
                     addCycles := _initCycles*16;
                 }else{};
                 if (addCycles > 0){
-                    Cycles.add(addCycles);
-                    let res = await ic.deposit_cycles({canister_id = _app });
+                    Cycles.add<system>(addCycles);
+                    let _res = await ic.deposit_cycles({canister_id = _app });
                     canisters := Trie.put(canisters, keyp(_app), Principal.equal, totalCycles+addCycles).0;
                 };
             };
@@ -153,7 +152,6 @@ module{
         return canisters;
     };
     public func put(_canisters: MonitoredCanisters, _app: Principal) : async* MonitoredCanisters{
-        let ic: IC = actor("aaaaa-aa");
         var canisters = _canisters;
         let canisterStatus = await* get_canister_status(_app);
         canisters := Trie.put(canisters, keyp(_app), Principal.equal, canisterStatus.cycles).0;
@@ -212,7 +210,7 @@ module{
                         addCycles := _initCycles*16;
                     }else{};
                     if (addCycles > 0){
-                        Cycles.add(addCycles);
+                        Cycles.add<system>(addCycles);
                         let res = await ic.deposit_cycles({canister_id = _app });
                         canisters := Trie.put(canisters, keyp(_app), Principal.equal, totalCycles+addCycles).0;
                     };
@@ -224,7 +222,6 @@ module{
         };
 
         public func putCanister(_app: Principal) : async* (){
-            let ic: IC = actor("aaaaa-aa");
             let canisterStatus = await* get_canister_status(_app);
             canisters := Trie.put(canisters, keyp(_app), Principal.equal, canisterStatus.cycles).0;
         };

@@ -1,5 +1,4 @@
 import Result "mo:base/Result";
-import Buffer "mo:base/Buffer";
 
 module {
     public type AccountIdentifier = Text;

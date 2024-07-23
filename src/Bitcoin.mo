@@ -129,7 +129,7 @@ module {
   /// Relies on the `bitcoin_get_balance` endpoint.
   /// See https://internetcomputer.org/docs/current/references/ic-interface-spec/#ic-bitcoin_get_balance
   public func get_balance(network : Network, address : BitcoinAddress) : async Satoshi {
-    ExperimentalCycles.add(GET_BALANCE_COST_CYCLES);
+    ExperimentalCycles.add<system>(GET_BALANCE_COST_CYCLES);
     await management_canister_actor.bitcoin_get_balance({
         address;
         network;
@@ -144,7 +144,7 @@ module {
   ///
   /// See https://internetcomputer.org/docs/current/references/ic-interface-spec/#ic-bitcoin_get_utxos
   public func get_utxos(network : Network, address : BitcoinAddress) : async GetUtxosResponse {
-    ExperimentalCycles.add(GET_UTXOS_COST_CYCLES);
+    ExperimentalCycles.add<system>(GET_UTXOS_COST_CYCLES);
     await management_canister_actor.bitcoin_get_utxos({
         address;
         network;
@@ -158,7 +158,7 @@ module {
   /// Relies on the `bitcoin_get_current_fee_percentiles` endpoint.
   /// See https://internetcomputer.org/docs/current/references/ic-interface-spec/#ic-bitcoin_get_current_fee_percentiles
   public func get_current_fee_percentiles(network : Network) : async [MillisatoshiPerByte] {
-    ExperimentalCycles.add(GET_CURRENT_FEE_PERCENTILES_COST_CYCLES);
+    ExperimentalCycles.add<system>(GET_CURRENT_FEE_PERCENTILES_COST_CYCLES);
     await management_canister_actor.bitcoin_get_current_fee_percentiles({
         network;
     })
@@ -172,7 +172,7 @@ module {
     let transaction_fee =
         SEND_TRANSACTION_BASE_COST_CYCLES + transaction.size() * SEND_TRANSACTION_COST_CYCLES_PER_BYTE;
 
-    ExperimentalCycles.add(transaction_fee);
+    ExperimentalCycles.add<system>(transaction_fee);
     await management_canister_actor.bitcoin_send_transaction({
         network;
         transaction;
@@ -198,7 +198,7 @@ module {
   };
 
   public func sign_with_ecdsa(key_name : Text, derivation_path : [Blob], message_hash : Blob) : async Blob {
-    ExperimentalCycles.add(ECDSA_SIGN_CYCLES);
+    ExperimentalCycles.add<system>(ECDSA_SIGN_CYCLES);
     let res = await ecdsa_canister_actor.sign_with_ecdsa({
         message_hash;
         derivation_path;

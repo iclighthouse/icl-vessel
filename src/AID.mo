@@ -10,7 +10,6 @@
 import Prim "mo:⛔";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
-import Nat32 "mo:base/Nat32";
 import Char "mo:base/Char";
 import Array "mo:base/Array";
 import Text "mo:base/Text";
