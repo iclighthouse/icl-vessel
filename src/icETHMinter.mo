@@ -263,13 +263,11 @@ module {
         #Ok : BlockHeight; 
         #Err : ResultError;
       };
-      update_claims : shared () -> async ();
       get_withdrawal_account : shared query (_account : Account) -> async Account;
       retrieve : shared (_token: ?EthAddress, _address: EthAddress, _amount: Wei, _sa: ?[Nat8]) -> async { 
         #Ok : RetrieveResult; 
         #Err : ResultError;
       };
-      update_retrievals : shared () -> async (sending: [(TxStatus, Timestamp)]);
       cover_tx : shared (_txi: TxIndex, _sa: ?[Nat8]) -> async ?BlockHeight;
       
       get_minter_address : shared query () -> async (EthAddress, Nonce);
