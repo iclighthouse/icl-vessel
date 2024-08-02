@@ -289,7 +289,7 @@ module {
       get_events : shared query (_page: ?ListPage, _size: ?ListSize) -> async TrieList<BlockHeight, (Event, Timestamp)>;
       get_account_events : shared query (_accountId: AccountId) -> async [(Event, Timestamp)];
 
-      keeper_setRpc : shared (_act: {#remove; #put:(name: Text, url: Text, status: {#Available; #Unavailable})}, _sa: ?Sa) -> async Bool;
+      keeper_set_rpc : shared (_act: {#remove; #put:(name: Text, url: Text, status: {#Available; #Unavailable})}, _sa: ?Sa) -> async Bool;
       get_keepers : shared query () -> async TrieList<AccountId, Keeper>;
       get_rpc_providers : shared query () -> async TrieList<AccountId, RpcProvider>;
 
