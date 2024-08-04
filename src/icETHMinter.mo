@@ -223,11 +223,11 @@ module {
     #send: {toid: ?Nat; to: Account; icTokenCanisterId: Principal; amount: Wei};
   };
 
+  public type TxType = {#EIP1559; #EIP2930; #Legacy};
   public type InitArgs = {
     min_confirmations: ?Nat;
     rpc_confirmations: Nat;
-    // rpc_canister_id: Principal;
-    utils_canister_id: Principal;
+    tx_type : ?TxType;
     deposit_method: Nat8; // 1=Method 1; 2=Method 2; 3=All
   };
   public type MinterInfo = {
