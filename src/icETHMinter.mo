@@ -156,7 +156,7 @@ module {
     confirmedTime: ?Timestamp;
     error: ?Text;
   };
-  public type PendingDepositTxn = (txHash: TxHash, account: Account, signature: [Nat8], isVerified: Bool, ts: Timestamp);
+  public type PendingDepositTxn = (txHash: TxHash, account: Account, signature: [Nat8], isVerified: Bool, ts: Timestamp, toid: ?Nat);
   public type UpdateTxArgs = {
       fee: ?{ gasPrice: Wei; gasLimit: Nat; maxFee: Wei;};
       amount: ?Wei;
