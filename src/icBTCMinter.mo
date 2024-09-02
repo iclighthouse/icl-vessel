@@ -58,11 +58,9 @@ module {
   };
   public type InitArgs = {
     retrieve_btc_min_amount : Nat64;
-    ledger_id : Principal;
     min_confirmations: ?Nat32;
     fixed_fee: Nat;
     dex_pair: ?Principal;
-    mode : Mode;
   };
   public type UpgradeArgs = {
       retrieve_btc_min_amount : ?Nat64;
